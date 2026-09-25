@@ -1,0 +1,610 @@
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, Helvetica, sans-serif;
+    user-select: none;
+}
+
+body {
+    background: transparent;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#app {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* =========================================================
+   MAIN SHELL
+   ========================================================= */
+
+.inventory-shell {
+    width: min(1450px, 94vw);
+    height: min(780px, 90vh);
+
+    background: rgba(11, 12, 15, 0.96);
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.65);
+
+    color: #fff;
+
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.topbar {
+    height: 76px;
+
+    padding: 0 22px;
+
+    display: flex;
+    align-items: center;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.brand {
+    min-width: 250px;
+}
+
+.eyebrow {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.38);
+    font-weight: 700;
+}
+
+.brand h1 {
+    margin: 3px 0 0;
+
+    font-size: 22px;
+    letter-spacing: 1px;
+
+    font-weight: 700;
+}
+
+/* =========================================================
+   WEIGHT
+   ========================================================= */
+
+.weight-box {
+    margin-left: auto;
+    width: 260px;
+}
+
+.weight-box span {
+    display: block;
+
+    font-size: 9px;
+    letter-spacing: 2px;
+
+    color: rgba(255, 255, 255, 0.38);
+
+    margin-bottom: 4px;
+}
+
+.weight-box strong {
+    display: block;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    margin-bottom: 7px;
+}
+
+.weight-track {
+    width: 100%;
+    height: 3px;
+
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#weight-fill {
+    width: 0%;
+    height: 100%;
+
+    background: #e5e5e5;
+
+    transition: width 0.2s ease;
+}
+
+/* =========================================================
+   CLOSE
+   ========================================================= */
+
+.close {
+    width: 38px;
+    height: 38px;
+
+    margin-left: 20px;
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    background: rgba(255, 255, 255, 0.025);
+
+    color: rgba(255, 255, 255, 0.6);
+
+    font-size: 24px;
+
+    cursor: pointer;
+
+    transition: 0.15s;
+}
+
+.close:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+/* =========================================================
+   THREE COLUMN LAYOUT
+   ========================================================= */
+
+.inventory-layout {
+    flex: 1;
+
+    min-height: 0;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        150px
+        minmax(0, 1fr);
+
+    gap: 18px;
+
+    padding: 18px;
+}
+
+/* =========================================================
+   INVENTORY PANEL
+   ========================================================= */
+
+.inventory-panel {
+    min-width: 0;
+    min-height: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    background: rgba(255, 255, 255, 0.018);
+
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.panel-header {
+    height: 62px;
+
+    padding: 0 15px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.panel-eyebrow {
+    display: block;
+
+    font-size: 9px;
+    letter-spacing: 2px;
+
+    color: rgba(255, 255, 255, 0.32);
+
+    margin-bottom: 4px;
+}
+
+.panel-header h2 {
+    margin: 0;
+
+    font-size: 15px;
+
+    font-weight: 600;
+
+    letter-spacing: 0.5px;
+}
+
+.panel-count {
+    font-size: 9px;
+    letter-spacing: 1px;
+
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* =========================================================
+   INVENTORY GRID
+   ========================================================= */
+
+.inventory-grid {
+    flex: 1;
+
+    min-height: 0;
+
+    padding: 15px;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(5, minmax(0, 1fr));
+
+    grid-auto-rows: minmax(72px, 1fr);
+
+    gap: 7px;
+
+    overflow: hidden;
+}
+
+/* =========================================================
+   SLOT
+   ========================================================= */
+
+.slot {
+    position: relative;
+
+    min-width: 0;
+    min-height: 0;
+
+    background: rgba(255, 255, 255, 0.025);
+
+    border: 1px solid rgba(255, 255, 255, 0.065);
+
+    transition:
+        border-color 0.12s ease,
+        background 0.12s ease,
+        transform 0.12s ease;
+}
+
+.slot:hover {
+    background: rgba(255, 255, 255, 0.045);
+
+    border-color:
+        rgba(255, 255, 255, 0.13);
+}
+
+.slot.selected {
+    border-color:
+        rgba(255, 255, 255, 0.45);
+
+    background:
+        rgba(255, 255, 255, 0.07);
+}
+
+.slot.drag-over {
+    border-color: #fff;
+
+    background:
+        rgba(255, 255, 255, 0.09);
+}
+
+/* =========================================================
+   SLOT NUMBER
+   ========================================================= */
+
+.slot-number {
+    position: absolute;
+
+    top: 5px;
+    left: 6px;
+
+    font-size: 8px;
+
+    color:
+        rgba(255, 255, 255, 0.22);
+
+    pointer-events: none;
+}
+
+/* =========================================================
+   ITEM
+   ========================================================= */
+
+.item {
+    position: absolute;
+
+    inset: 0;
+
+    cursor: default;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+}
+
+/* .item:active {
+    cursor: grabbing;
+} */
+
+.item img {
+    width: 65%;
+    height: 65%;
+
+    object-fit: contain;
+
+    pointer-events: none;
+}
+
+.item-amount {
+    position: absolute;
+
+    top: 5px;
+    right: 6px;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    color: #fff;
+
+    text-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.9);
+
+    pointer-events: none;
+}
+
+.item-label {
+    position: absolute;
+
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+
+    text-align: center;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    font-size: 8px;
+
+    color:
+        rgba(255, 255, 255, 0.55);
+
+    pointer-events: none;
+}
+
+/* =========================================================
+   GROUND
+   ========================================================= */
+
+.ground-panel {
+    position: relative;
+}
+
+.ground-grid {
+    background:
+        rgba(255, 255, 255, 0.008);
+}
+
+.ground-grid:empty::after {
+    content: "NOTHING NEARBY";
+
+    grid-column: 1 / -1;
+
+    align-self: center;
+    justify-self: center;
+
+    font-size: 10px;
+
+    letter-spacing: 2px;
+
+    color:
+        rgba(255, 255, 255, 0.18);
+}
+
+/* =========================================================
+   ACTION PANEL
+   ========================================================= */
+
+.action-panel {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: stretch;
+
+    justify-content: center;
+
+    gap: 8px;
+}
+
+.action-button {
+    height: 48px;
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    background:
+        rgba(255, 255, 255, 0.025);
+
+    color:
+        rgba(255, 255, 255, 0.72);
+
+    cursor: pointer;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 4px;
+
+    font-size: 9px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    transition: 0.15s;
+}
+
+.action-button:hover {
+    background:
+        rgba(255, 255, 255, 0.07);
+
+    color: #fff;
+
+    border-color:
+        rgba(255, 255, 255, 0.16);
+}
+
+.action-button.primary {
+    background:
+        rgba(255, 255, 255, 0.08);
+
+    color: #fff;
+}
+
+.action-button.danger:hover {
+    border-color:
+        rgba(255, 90, 90, 0.45);
+}
+
+.action-icon {
+    font-size: 7px;
+
+    letter-spacing: 1.5px;
+
+    opacity: 0.35;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.bottom-tip {
+    height: 32px;
+
+    padding: 0 22px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    border-top:
+        1px solid rgba(255, 255, 255, 0.05);
+
+    color:
+        rgba(255, 255, 255, 0.2);
+
+    font-size: 8px;
+
+    letter-spacing: 1px;
+}
+
+/* =========================================================
+   DRAGGING
+   ========================================================= */
+
+.item.dragging {
+    opacity: 0.35;
+}
+
+/* =========================================================
+   SMALL SCREENS
+   ========================================================= */
+
+@media (max-width: 1100px) {
+
+    .inventory-shell {
+        width: 96vw;
+        height: 92vh;
+    }
+
+    .inventory-layout {
+        grid-template-columns:
+            minmax(0, 1fr)
+            115px
+            minmax(0, 1fr);
+
+        gap: 10px;
+    }
+
+    .inventory-grid {
+        padding: 10px;
+        gap: 5px;
+    }
+
+}
+
+/* =========================================================
+   TRAVES CUSTOM DRAG
+   ========================================================= */
+
+.drag-ghost {
+    position: fixed;
+    z-index: 99999;
+
+    width: 70px;
+    height: 70px;
+
+    pointer-events: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    transform: translateZ(0);
+}
+
+.drag-ghost img {
+    width: 64px;
+    height: 64px;
+
+    object-fit: contain;
+
+    pointer-events: none;
+
+    filter:
+        drop-shadow(0 4px 8px rgba(0, 0, 0, 0.55));
+}
+
+/* .inventory-dragging,
+.inventory-dragging * {
+    cursor: grabbing !important;
+} */
+
+.slot.drag-target {
+    border-color: rgba(255, 255, 255, 0.65) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.item.dragging {
+    opacity: 0.25;
+}

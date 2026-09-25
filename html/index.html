@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>traves-inventory</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+<body>
+
+<main
+    id="app"
+    class="hidden"
+>
+
+    <section class="inventory-shell">
+
+        <!-- ================================================= -->
+        <!-- HEADER -->
+        <!-- ================================================= -->
+
+        <header class="topbar">
+
+            <div class="brand">
+
+                <div class="eyebrow">
+                    TRAVES
+                </div>
+
+                <h1>
+                    INVENTORY
+                </h1>
+
+            </div>
+
+            <div class="weight-box">
+
+                <span>
+                    WEIGHT
+                </span>
+
+                <strong id="weight">
+                    0 / 120 kg
+                </strong>
+
+                <div class="weight-track">
+
+                    <div
+                        id="weight-fill"
+                    ></div>
+
+                </div>
+
+            </div>
+
+            <button
+                id="close"
+                class="close"
+            >
+                ×
+            </button>
+
+        </header>
+
+        <!-- ================================================= -->
+        <!-- MAIN -->
+        <!-- ================================================= -->
+
+        <div class="inventory-layout">
+
+            <!-- ================================================= -->
+            <!-- PLAYER -->
+            <!-- ================================================= -->
+
+            <section class="inventory-panel player-panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <span class="panel-eyebrow">
+                            PLAYER
+                        </span>
+
+                        <h2>
+                            <span id="player-name">
+                                PLAYER
+                            </span>
+                        </h2>
+
+                    </div>
+
+                    <span class="panel-count">
+                        40 SLOTS
+                    </span>
+
+                </div>
+
+                <div
+                    id="grid"
+                    class="inventory-grid"
+                ></div>
+
+            </section>
+
+            <!-- ================================================= -->
+            <!-- ACTIONS -->
+            <!-- ================================================= -->
+
+            <section class="action-panel">
+
+                <button
+                    id="use"
+                    class="action-button primary"
+                >
+                    <span class="action-icon">
+                        USE
+                    </span>
+
+                    <span>
+                        USE ITEM
+                    </span>
+                </button>
+
+                <button
+                    id="give"
+                    class="action-button"
+                >
+                    <span class="action-icon">
+                        GIVE
+                    </span>
+
+                    <span>
+                        GIVE ITEM
+                    </span>
+                </button>
+
+                <button
+                    id="drop"
+                    class="action-button danger"
+                >
+                    <span class="action-icon">
+                        DROP
+                    </span>
+
+                    <span>
+                        DROP ITEM
+                    </span>
+                </button>
+
+            </section>
+
+            <!-- ================================================= -->
+            <!-- GROUND -->
+            <!-- ================================================= -->
+
+            <section class="inventory-panel ground-panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <span class="panel-eyebrow">
+                            NEARBY
+                        </span>
+
+                        <h2>
+                            GROUND
+                        </h2>
+
+                    </div>
+
+                    <span class="panel-count">
+                        5M
+                    </span>
+
+                </div>
+
+                <div
+                    id="ground-grid"
+                    class="inventory-grid ground-grid"
+                ></div>
+
+            </section>
+
+        </div>
+
+        <!-- ================================================= -->
+        <!-- TIP -->
+        <!-- ================================================= -->
+
+        <div class="bottom-tip">
+
+            <span>
+                DRAG ITEMS BETWEEN INVENTORIES
+            </span>
+
+            <span>
+                DOUBLE CLICK TO USE
+            </span>
+
+        </div>
+
+    </section>
+
+</main>
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
