@@ -25,6 +25,159 @@ local function getPlayer(source)
     return QBCore.Functions.GetPlayer(tonumber(source))
 end
 
+-- =========================================================
+-- QBCORE PLAYER FUNCTION COMPATIBILITY
+-- =========================================================
+--
+-- The original qb-inventory dynamically added inventory
+-- functions to Player.Functions.
+--
+-- This keeps existing QBCore resources compatible with
+-- this custom qb-inventory.
+-- =========================================================
+
+local function RegisterPlayerInventoryMethods(source)
+    source = tonumber(source)
+
+    if not source then
+        return
+    end
+
+    local Player = QBCore.Functions.GetPlayer(source)
+
+    if not Player then
+        return
+    end
+
+    QBCore.Functions.AddPlayerMethod(
+        source,
+        'AddItem',
+        function(item, amount, slot, info, reason)
+            return exports['qb-inventory']:AddItem(
+                source,
+                item,
+                amount,
+                slot,
+                info,
+                reason
+            )
+        end
+    )
+
+    QBCore.Functions.AddPlayerMethod(
+        source,
+        'RemoveItem',
+        function(item, amount, slot, reason)
+            return exports['qb-inventory']:RemoveItem(
+                source,
+                item,
+                amount,
+                slot,
+                reason
+            )
+        end
+    )
+
+    QBCore.Functions.AddPlayerMethod(
+        source,
+        'GetItemBySlot',
+        function(slot)
+            return exports['qb-inventory']:GetItemBySlot(
+                source,
+                slot
+            )
+        end
+    )
+
+    QBCore.Functions.AddPlayerMethod(
+        source,
+        'GetItemByName',
+        function(item)
+            return exports['qb-inventory']:GetItemByName(
+                source,
+                item
+            )
+        end
+    )
+
+    QBCore.Functions.AddPlayerMethod(
+        source,
+        'GetItemsByName',
+        function(item)
+            return exports['qb-inventory']:GetItemsByName(
+                source,
+                item
+            )
+        end
+    )
+
+    QBCore.Functions.AddPlayerMethod(
+        source,
+        'ClearInventory',
+        function(itemsToKeep)
+            return exports['qb-inventory']:ClearInventory(
+                source,
+                itemsToKeep
+            )
+        end
+    )
+
+    QBCore.Functions.AddPlayerMethod(
+        source,
+        'SetInventory',
+        function(items, reason)
+            return exports['qb-inventory']:SetInventory(
+                source,
+                items,
+                reason
+            )
+        end
+    )
+
+    print(
+        ('[qb-inventory] Registered Player.Functions inventory methods for %s')
+        :format(source)
+    )
+end
+
+-- =========================================================
+-- REGISTER INVENTORY METHODS WHEN PLAYER LOADS
+-- =========================================================
+
+AddEventHandler(
+    'QBCore:Server:PlayerLoaded',
+    function(Player)
+        if not Player or not Player.PlayerData then
+            return
+        end
+
+        RegisterPlayerInventoryMethods(
+            Player.PlayerData.source
+        )
+    end
+)
+
+-- =========================================================
+-- REGISTER METHODS FOR PLAYERS ALREADY ONLINE
+-- =========================================================
+
+AddEventHandler(
+    'onResourceStart',
+    function(resourceName)
+        if resourceName ~= GetCurrentResourceName() then
+            return
+        end
+
+        Wait(500)
+
+        local Players =
+            QBCore.Functions.GetQBPlayers()
+
+        for source in pairs(Players) do
+            RegisterPlayerInventoryMethods(source)
+        end
+    end
+)
 
 -- =========================================================
 -- GET CITIZEN ID
@@ -1750,39 +1903,27 @@ RegisterNetEvent(
 -- =========================================================
 
 local function ExecuteUsableItem(source, item)
+
     if not item or not item.name then
         return false
     end
 
-    local itemName = tostring(item.name):lower()
+    local itemName =
+        tostring(item.name):lower()
 
-    local usable = nil
+    -- =====================================================
+    -- GET QBCORE USABLE ITEM
+    -- =====================================================
 
-    -- Use the actual QBCore usable-item registry.
-    if QBCore.Functions.CanUseItem then
-        local success, result = pcall(
-            QBCore.Functions.CanUseItem,
-            itemName
-        )
-
-        if not success then
-            print((
-                '^1[qb-inventory]^7 CanUseItem error for %s: %s'
-            ):format(
-                itemName,
-                tostring(result)
-            ))
-
-            return false
-        end
-
-        usable = result
-    end
+    local usable =
+        QBCore.Functions.CanUseItem(itemName)
 
     if not usable then
-        print((
-            '^3[qb-inventory]^7 No usable handler registered for: %s'
-        ):format(itemName))
+
+        print(
+            ('^3[qb-inventory]^7 No usable handler registered for: %s')
+            :format(itemName)
+        )
 
         TriggerClientEvent(
             'qb-inventory:client:notify',
@@ -1794,28 +1935,28 @@ local function ExecuteUsableItem(source, item)
         return false
     end
 
-    local callback = nil
-
-    -- Your QBCore stores usable items like:
+    -- =====================================================
+    -- QBCORE USABLE REGISTRATION
+    --
+    -- Current QBCore stores:
     --
     -- QBCore.UsableItems[item] = {
     --     func = callback,
     --     resource = resource
     -- }
+    --
+    -- The func may be a CFX function reference, so DO NOT
+    -- require type(func) == "function".
+    -- =====================================================
 
-    if type(usable) == 'table'
-        and type(usable.func) == 'function'
+    if type(usable) ~= 'table'
+        or not usable.func
     then
-        callback = usable.func
 
-    elseif type(usable) == 'function' then
-        callback = usable
-    end
-
-    if not callback then
-        print((
-            '^1[qb-inventory]^7 Usable item %s has no valid callback.'
-        ):format(itemName))
+        print(
+            ('^1[qb-inventory]^7 Usable item %s has no valid callback.')
+            :format(itemName)
+        )
 
         TriggerClientEvent(
             'qb-inventory:client:notify',
@@ -1827,19 +1968,26 @@ local function ExecuteUsableItem(source, item)
         return false
     end
 
-    local success, result = pcall(
-        callback,
-        source,
-        item
-    )
+    -- =====================================================
+    -- EXECUTE CALLBACK
+    -- =====================================================
+
+    local success, result =
+        pcall(
+            usable.func,
+            source,
+            item
+        )
 
     if not success then
-        print((
-            '^1[qb-inventory]^7 Error using %s: %s'
-        ):format(
-            itemName,
-            tostring(result)
-        ))
+
+        print(
+            ('^1[qb-inventory]^7 Error using %s: %s')
+            :format(
+                itemName,
+                tostring(result)
+            )
+        )
 
         TriggerClientEvent(
             'qb-inventory:client:notify',
@@ -1851,18 +1999,21 @@ local function ExecuteUsableItem(source, item)
         return false
     end
 
-    -- A usable callback can explicitly return false
-    -- to tell the inventory that the item wasn't used.
+    -- =====================================================
+    -- CALLBACK CAN RETURN FALSE
+    -- =====================================================
+
     if result == false then
         return false
     end
 
-    debugPrint((
-        'Successfully used usable item %s for player %s.'
-    ):format(
-        itemName,
-        source
-    ))
+    debugPrint(
+        ('Successfully used usable item %s for player %s.')
+        :format(
+            itemName,
+            source
+        )
+    )
 
     return true
 end
@@ -4358,6 +4509,223 @@ exports(
     end
 )
 
+-- =========================================================
+-- SET INVENTORY
+-- QBCore / qb-weapons compatibility
+-- =========================================================
+
+exports(
+    'SetInventory',
+    function(source, items, reason)
+
+        source = tonumber(source)
+
+        if not source then
+            print(
+                '^1[qb-inventory]^7 SetInventory failed: invalid source.'
+            )
+            return false
+        end
+
+        local Player = getPlayer(source)
+
+        if not Player then
+            print(
+                ('^1[qb-inventory]^7 SetInventory failed: player %s not found.')
+                :format(source)
+            )
+            return false
+        end
+
+        if type(items) ~= 'table' then
+            print(
+                ('^1[qb-inventory]^7 SetInventory failed: invalid inventory for player %s.')
+                :format(source)
+            )
+            return false
+        end
+
+        -- =====================================================
+        -- NORMALIZE THE INVENTORY WE RECEIVED
+        -- =====================================================
+
+        local inventory =
+            NormalizeInventory(items)
+
+        -- =====================================================
+        -- PROTECT AGAINST QBCORE EMPTY INVENTORY CALLS
+        --
+        -- qb-weapons legitimately calls SetInventory when
+        -- weapon data changes.
+        --
+        -- However, QBCore/multichar can sometimes call it with
+        -- an empty PlayerData.items table.
+        --
+        -- If we already have a loaded inventory, don't allow
+        -- that empty table to wipe it.
+        -- =====================================================
+        
+        if next(inventory) == nil then
+        
+            print(
+                ('^1[qb-inventory] SetInventory received EMPTY inventory!^7 Player: %s')
+                :format(source)
+            )
+        
+            print(
+                ('[qb-inventory] Player.PlayerData.items type: %s')
+                :format(type(Player.PlayerData.items))
+            )
+        
+            if type(Player.PlayerData.items) == 'table' then
+                print(
+                    ('[qb-inventory] Player.PlayerData.items count: %s')
+                    :format(#Player.PlayerData.items)
+                )
+            
+                for slot, item in pairs(Player.PlayerData.items) do
+                
+                    if item then
+                    
+                        print(
+                            ('[qb-inventory] PlayerData slot %s = %sx %s')
+                            :format(
+                                tostring(slot),
+                                tostring(item.amount),
+                                tostring(item.name)
+                            )
+                        )
+                    
+                        if item.info then
+                        
+                            print(
+                                ('[qb-inventory]   info.ammo = %s')
+                                :format(
+                                    tostring(item.info.ammo)
+                                )
+                            )
+                        
+                        end
+                    
+                    end
+                
+                end
+            end
+        
+            local cachedInventory =
+                OpenInventories[source]
+        
+            if cachedInventory
+                and next(cachedInventory) ~= nil
+            then
+            
+                print(
+                    '[qb-inventory] Using cached inventory instead.'
+                )
+            
+                inventory =
+                    cachedInventory
+            
+            else
+            
+                print(
+                    '^1[qb-inventory] WARNING: No cached inventory available!^7'
+                )
+            
+            end
+        end
+--        if next(inventory) == nil then
+--
+--            local cachedInventory =
+--                OpenInventories[source]
+--
+--            if cachedInventory
+--                and next(cachedInventory) ~= nil
+--            then
+--
+--                print(
+--                    ('[qb-inventory] SetInventory received EMPTY inventory for player %s - using cached inventory.')
+--                    :format(source)
+--                )
+--
+--                inventory =
+--                    cachedInventory
+--            end
+--        end
+
+        -- =====================================================
+        -- UPDATE SERVER CACHE
+        -- =====================================================
+
+        OpenInventories[source] =
+            inventory
+
+        OpenCitizenIds[source] =
+            Player.PlayerData.citizenid
+
+        -- =====================================================
+        -- UPDATE QBCORE PLAYER DATA
+        -- =====================================================
+
+        Player.PlayerData.items =
+            inventory
+
+        -- =====================================================
+        -- SYNC CLIENT
+        -- =====================================================
+
+        TriggerClientEvent(
+            'QBCore:Player:SetPlayerData',
+            source,
+            Player.PlayerData
+        )
+
+        TriggerClientEvent(
+            'QBCore:Client:OnPlayerUpdated',
+            source,
+            'items',
+            inventory
+        )
+
+        TriggerClientEvent(
+            'qb-inventory:client:update',
+            source,
+            inventory
+        )
+
+        -- =====================================================
+        -- SAVE COMPLETE INVENTORY
+        -- =====================================================
+
+        local success =
+            SaveInventory(
+                source,
+                inventory
+            )
+
+        if not success then
+
+            print(
+                ('^1[qb-inventory]^7 SetInventory failed to save inventory for player %s.')
+                :format(source)
+            )
+
+            return false
+        end
+
+        debugPrint(
+            ('SetInventory completed for player %s%s')
+            :format(
+                source,
+                reason
+                    and (' | Reason: ' .. tostring(reason))
+                    or ''
+            )
+        )
+
+        return true
+    end
+)
 
 -- =========================================================
 -- QBCORE COMPATIBILITY
