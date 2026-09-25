@@ -426,114 +426,98 @@ end
 
 -- =========================================================
 -- LOAD INVENTORY
+--
+-- IMPORTANT:
+-- QBCore calls this BEFORE the Player object is registered.
+-- Therefore we MUST NOT use getPlayer(source) here.
+--
+-- QBCore passes:
+--     source
+--     citizenid
+--
+-- We load directly from the database and return the
+-- inventory to qb-core so it becomes:
+--
+--     PlayerData.items
+--
 -- =========================================================
 
-local function LoadInventory(source)
+local function LoadInventory(source, citizenid)
 
     source = tonumber(source)
 
-    if not source then
+    if not source or not citizenid then
         return {}
     end
 
-    local Player =
-        getPlayer(source)
-
-    if not Player then
-        return {}
-    end
-
-    local citizenid =
-        Player.PlayerData.citizenid
-
-    if not citizenid then
-        return {}
-    end
-
-    OpenCitizenIds[source] =
-        citizenid
-
-    local result =
-        MySQL.single.await(
-            [[
-                SELECT inventory
-                FROM traves_inventories
-                WHERE citizenid = ?
-            ]],
-            {
-                citizenid
-            }
-        )
+    local result = MySQL.single.await(
+        'SELECT inventory FROM traves_inventories WHERE citizenid = ?',
+        { citizenid }
+    )
 
     if not result then
 
-        local empty =
-            {}
+        local inventory = {}
 
-        local inserted =
-            MySQL.insert.await(
-                [[
-                    INSERT INTO traves_inventories
-                    (
-                        citizenid,
-                        inventory,
-                        maxweight,
-                        maxslots
-                    )
-                    VALUES (?, ?, ?, ?)
-                ]],
-                {
-                    citizenid,
-                    json.encode(empty),
-                    Config.MaxWeight,
-                    Config.MaxSlots
-                }
+        MySQL.insert.await(
+            [[
+                INSERT INTO traves_inventories
+                (citizenid, inventory, maxweight, maxslots)
+                VALUES (?, ?, ?, ?)
+            ]],
+            {
+                citizenid,
+                json.encode(inventory),
+                Config.MaxWeight,
+                Config.MaxSlots
+            }
+        )
+
+        OpenInventories[source] = inventory
+        OpenCitizenIds[source] = citizenid
+
+        return inventory
+    end
+
+    local decoded = {}
+
+    if result.inventory then
+
+        local success, data =
+            pcall(
+                json.decode,
+                result.inventory
             )
 
-        if inserted then
-
-            debugPrint(
-                ('Created inventory row for %s (%s).')
-                :format(
-                    GetPlayerName(source) or 'Unknown',
-                    citizenid
-                )
-            )
+        if success and type(data) == 'table' then
+            decoded = data
         end
-
-        return {}
     end
 
-    local success, decoded =
-        pcall(
-            json.decode,
-            result.inventory
-        )
-
-    if not success
-        or type(decoded) ~= 'table' then
-
-        print(
-            ('^1[qb-inventory]^7 Failed to decode inventory for %s.')
-            :format(citizenid)
-        )
-
-        return {}
-    end
-
-    local normalized =
+    local inventory =
         NormalizeInventory(decoded)
+
+    -- IMPORTANT:
+    -- This exact table is returned to qb-core.
+    -- PlayerData.items will therefore reference this
+    -- same inventory table.
+
+    OpenInventories[source] =
+        inventory
+
+    OpenCitizenIds[source] =
+        citizenid
 
     debugPrint(
         ('Loaded inventory for %s (%s) containing %s slot(s).')
         :format(
             GetPlayerName(source) or 'Unknown',
             citizenid,
-            CountInventoryItems(normalized)
+            CountInventoryItems(inventory)
         )
     )
 
-    return normalized
+    return inventory
 end
 
 
@@ -1282,6 +1266,164 @@ local function UpdateInventory(source, inventory)
     )
 end
 
+-- =========================================================
+-- QB-WEAPONS AMMO PERSISTENCE
+--
+-- qb-weapons normally does:
+--
+-- Player.PlayerData.items[slot].info.ammo = amount
+-- Player.SetInventory(Player.PlayerData.items, true)
+--
+-- Our custom inventory keeps the live inventory in
+-- OpenInventories, so we handle the ammo update directly.
+-- =========================================================
+
+--RegisterNetEvent(
+--    'qb-weapons:server:UpdateWeaponAmmo',
+--    function(CurrentWeaponData, amount)
+--
+--        local source = tonumber(source)
+--
+--        if not source then
+--            return
+--        end
+--
+--        if type(CurrentWeaponData) ~= 'table' then
+--            print(
+--                '^1[qb-inventory]^7 Weapon ammo update failed: invalid weapon data.'
+--            )
+--            return
+--        end
+--
+--        local slot =
+--            tonumber(CurrentWeaponData.slot)
+--
+--        if not slot then
+--            print(
+--                '^1[qb-inventory]^7 Weapon ammo update failed: invalid weapon slot.'
+--            )
+--            return
+--        end
+--
+--        amount =
+--            tonumber(amount)
+--
+--        if amount == nil then
+--            print(
+--                '^1[qb-inventory]^7 Weapon ammo update failed: invalid ammo amount.'
+--            )
+--            return
+--        end
+--
+--        -- =====================================================
+--        -- GET OUR REAL LIVE INVENTORY
+--        -- =====================================================
+--
+--        local inventory =
+--            OpenInventories[source]
+--
+--        if type(inventory) ~= 'table' then
+--
+--            print(
+--                ('^1[qb-inventory]^7 Weapon ammo update failed: no cached inventory for player %s.')
+--                :format(source)
+--            )
+--
+--            return
+--        end
+--
+--        -- =====================================================
+--        -- GET WEAPON
+--        -- =====================================================
+--
+--        local weapon =
+--            inventory[slot]
+--
+--        if not weapon then
+--
+--            print(
+--                ('^1[qb-inventory]^7 Weapon ammo update failed: no item in slot %s for player %s.')
+--                :format(
+--                    slot,
+--                    source
+--                )
+--            )
+--
+--            return
+--        end
+--
+--        -- Make sure info exists.
+--        if type(weapon.info) ~= 'table' then
+--            weapon.info = {}
+--        end
+--
+--        -- =====================================================
+--        -- UPDATE AMMO
+--        -- =====================================================
+--
+--        weapon.info.ammo =
+--            amount
+--
+--        inventory[slot] =
+--            weapon
+--
+--        -- =====================================================
+--        -- UPDATE OUR CACHE
+--        -- =====================================================
+--
+--        OpenInventories[source] =
+--            inventory
+--
+--        -- =====================================================
+--        -- UPDATE QBCORE PLAYER DATA IF AVAILABLE
+--        -- =====================================================
+--
+--        local Player =
+--            getPlayer(source)
+--
+--        if Player then
+--
+--            Player.PlayerData.items =
+--                inventory
+--
+--        end
+--
+--        -- =====================================================
+--        -- SAVE DIRECTLY TO DATABASE
+--        -- =====================================================
+--
+--        local success =
+--            SaveInventory(
+--                source,
+--                inventory
+--            )
+--
+--        if not success then
+--
+--            print(
+--                ('^1[qb-inventory]^7 FAILED TO SAVE WEAPON AMMO | Player: %s | Slot: %s | Ammo: %s')
+--                :format(
+--                    source,
+--                    slot,
+--                    amount
+--                )
+--            )
+--
+--            return
+--        end
+--
+--        print(
+--            ('^2[qb-inventory]^7 WEAPON AMMO SAVED | Player: %s | Weapon: %s | Slot: %s | Ammo: %s')
+--            :format(
+--                GetPlayerName(source) or source,
+--                tostring(weapon.name),
+--                slot,
+--                amount
+--            )
+--        )
+--
+--    end
+--)
 
 -- =========================================================
 -- MOVE ITEMS
@@ -4521,140 +4663,57 @@ exports(
         source = tonumber(source)
 
         if not source then
-            print(
-                '^1[qb-inventory]^7 SetInventory failed: invalid source.'
-            )
             return false
         end
 
-        local Player = getPlayer(source)
+        local Player =
+            getPlayer(source)
 
         if not Player then
-            print(
-                ('^1[qb-inventory]^7 SetInventory failed: player %s not found.')
-                :format(source)
-            )
-            return false
-        end
-
-        if type(items) ~= 'table' then
-            print(
-                ('^1[qb-inventory]^7 SetInventory failed: invalid inventory for player %s.')
-                :format(source)
-            )
             return false
         end
 
         -- =====================================================
-        -- NORMALIZE THE INVENTORY WE RECEIVED
+        -- QBCORE CAN SOMETIMES GIVE US AN EMPTY TABLE HERE.
+        --
+        -- If that happens, use the inventory already loaded
+        -- for this player.
+        -- =====================================================
+
+        if type(items) ~= 'table'
+            or next(items) == nil
+        then
+
+            local cached =
+                OpenInventories[source]
+
+            if type(cached) == 'table'
+                and next(cached) ~= nil
+            then
+
+                items =
+                    cached
+
+            else
+
+                print(
+                    ('^1[qb-inventory]^7 SetInventory: no inventory available for player %s.')
+                    :format(source)
+                )
+
+                return false
+            end
+        end
+
+        -- =====================================================
+        -- NORMALIZE
         -- =====================================================
 
         local inventory =
             NormalizeInventory(items)
 
         -- =====================================================
-        -- PROTECT AGAINST QBCORE EMPTY INVENTORY CALLS
-        --
-        -- qb-weapons legitimately calls SetInventory when
-        -- weapon data changes.
-        --
-        -- However, QBCore/multichar can sometimes call it with
-        -- an empty PlayerData.items table.
-        --
-        -- If we already have a loaded inventory, don't allow
-        -- that empty table to wipe it.
-        -- =====================================================
-        
-        if next(inventory) == nil then
-        
-            print(
-                ('^1[qb-inventory] SetInventory received EMPTY inventory!^7 Player: %s')
-                :format(source)
-            )
-        
-            print(
-                ('[qb-inventory] Player.PlayerData.items type: %s')
-                :format(type(Player.PlayerData.items))
-            )
-        
-            if type(Player.PlayerData.items) == 'table' then
-                print(
-                    ('[qb-inventory] Player.PlayerData.items count: %s')
-                    :format(#Player.PlayerData.items)
-                )
-            
-                for slot, item in pairs(Player.PlayerData.items) do
-                
-                    if item then
-                    
-                        print(
-                            ('[qb-inventory] PlayerData slot %s = %sx %s')
-                            :format(
-                                tostring(slot),
-                                tostring(item.amount),
-                                tostring(item.name)
-                            )
-                        )
-                    
-                        if item.info then
-                        
-                            print(
-                                ('[qb-inventory]   info.ammo = %s')
-                                :format(
-                                    tostring(item.info.ammo)
-                                )
-                            )
-                        
-                        end
-                    
-                    end
-                
-                end
-            end
-        
-            local cachedInventory =
-                OpenInventories[source]
-        
-            if cachedInventory
-                and next(cachedInventory) ~= nil
-            then
-            
-                print(
-                    '[qb-inventory] Using cached inventory instead.'
-                )
-            
-                inventory =
-                    cachedInventory
-            
-            else
-            
-                print(
-                    '^1[qb-inventory] WARNING: No cached inventory available!^7'
-                )
-            
-            end
-        end
---        if next(inventory) == nil then
---
---            local cachedInventory =
---                OpenInventories[source]
---
---            if cachedInventory
---                and next(cachedInventory) ~= nil
---            then
---
---                print(
---                    ('[qb-inventory] SetInventory received EMPTY inventory for player %s - using cached inventory.')
---                    :format(source)
---                )
---
---                inventory =
---                    cachedInventory
---            end
---        end
-
-        -- =====================================================
-        -- UPDATE SERVER CACHE
+        -- KEEP BOTH REFERENCES SYNCHRONIZED
         -- =====================================================
 
         OpenInventories[source] =
@@ -4663,15 +4722,25 @@ exports(
         OpenCitizenIds[source] =
             Player.PlayerData.citizenid
 
-        -- =====================================================
-        -- UPDATE QBCORE PLAYER DATA
-        -- =====================================================
-
         Player.PlayerData.items =
             inventory
 
         -- =====================================================
-        -- SYNC CLIENT
+        -- SAVE
+        -- =====================================================
+
+        local success =
+            SaveInventory(
+                source,
+                inventory
+            )
+
+        if not success then
+            return false
+        end
+
+        -- =====================================================
+        -- CLIENT SYNC
         -- =====================================================
 
         TriggerClientEvent(
@@ -4692,26 +4761,6 @@ exports(
             source,
             inventory
         )
-
-        -- =====================================================
-        -- SAVE COMPLETE INVENTORY
-        -- =====================================================
-
-        local success =
-            SaveInventory(
-                source,
-                inventory
-            )
-
-        if not success then
-
-            print(
-                ('^1[qb-inventory]^7 SetInventory failed to save inventory for player %s.')
-                :format(source)
-            )
-
-            return false
-        end
 
         debugPrint(
             ('SetInventory completed for player %s%s')
